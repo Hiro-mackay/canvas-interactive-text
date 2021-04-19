@@ -35,3 +35,6 @@ yarn-error.log*
 
 # css build
 tailwind.compiled.css*
+
+# css build
+tailwind.compiled.css*
