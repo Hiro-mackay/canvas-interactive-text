@@ -1,9 +1,11 @@
 import * as PIXI from 'pixi.js';
+import { Graphics } from 'pixi.js';
 import { useCallback, useState } from 'react';
 import { Canvas } from '../components/Canvas';
 
 let pixiApp: PIXI.Application;
 const DefalutTextStyles: Partial<PIXI.ITextStyle> | PIXI.TextStyle = new PIXI.TextStyle();
+const dx = 10;
 
 interface BaseElement extends PIXI.Container {
   inTime: number;
@@ -71,6 +73,12 @@ let completed = false;
 let paused = true;
 
 export const Container = () => {
+  const [video, setVideo] = useState<HTMLVideoElement>(null);
+  const [sprite, setSprite] = useState<PIXI.Sprite>(null);
+  const [textSprite, setTextSprite] = useState<Text[]>([]);
+  const [selectedSprite, setSelectedSprite] = useState<Text>(null);
+  const [time, setTime] = useState(0);
+
   const initApp = useCallback((ref: HTMLCanvasElement) => {
     pixiApp = new PIXI.Application({ view: ref, width: 800, height: 450, backgroundColor: 0xffffff });
 
@@ -81,22 +89,9 @@ export const Container = () => {
     const _sprite = new PIXI.Sprite();
     _sprite.hitArea = new PIXI.Rectangle(0, 0, 800, 450);
     _sprite.interactive = true;
-    _sprite.buttonMode = true;
-
-    _sprite.on('pointerdown', pointerDown);
-
-    function pointerDown(event) {
-      setSelectedSprite(null);
-    }
 
     pixiApp.stage.addChild(_sprite);
   }, []);
-
-  const [video, setVideo] = useState<HTMLVideoElement>(null);
-  const [sprite, setSprite] = useState<PIXI.Sprite>(null);
-  const [textSprite, setTextSprite] = useState<Text[]>([]);
-  const [selectedSprite, setSelectedSprite] = useState<Text>(null);
-  const [time, setTime] = useState(0);
 
   const addVideo = async (file: File) => {
     const _video = await loadVideo(file);
@@ -168,6 +163,18 @@ export const Container = () => {
 
   function onSelected(event) {
     setSelectedSprite(event.currentTarget);
+    const current = event.currentTarget as Text;
+
+    const quad = new Graphics();
+    quad.lineStyle(1, 0x18a0fb, 1);
+    quad.moveTo(-dx, -dx);
+    quad.lineTo(-dx, current.height + dx);
+    quad.lineTo(current.width + dx, current.height + dx);
+    quad.lineTo(current.width + dx, -dx);
+    quad.lineTo(-dx, -dx);
+    quad.endFill;
+
+    current.addChild(quad);
 
     this.data = event.data;
     this.dragging = true;
@@ -196,7 +203,7 @@ export const Container = () => {
     tSprite.interactive = true;
     tSprite.buttonMode = true;
 
-    tSprite.anchor.set(0.5);
+    tSprite.anchor.set(0);
 
     tSprite
       .on('pointerdown', onSelected)
@@ -209,8 +216,18 @@ export const Container = () => {
     setTextSprite([...textSprite, tSprite]);
   };
 
+  const removeChild = () => {
+    selectedSprite.removeChildren();
+  };
+
+  const onUnselected = () => {
+    removeChild();
+    setSelectedSprite(null);
+  };
+
   const onChangeText = (val: string) => {
     selectedSprite.text = val;
+    console.log(selectedSprite);
   };
 
   const onChangeIn = (val: number) => {
@@ -242,7 +259,7 @@ export const Container = () => {
           type="button"
           value="テキスト追加"
           onClick={() => {
-            addText('テキスト');
+            addText('テキストオブジェクト');
           }}
         />
       </p>
@@ -262,13 +279,14 @@ export const Container = () => {
       {selectedSprite && (
         <div>
           <p className="p-2 inline-block">
-            <input
-              type="text"
+            <textarea
+              cols={20}
+              rows={3}
               defaultValue={selectedSprite.text}
               onChange={(e) => {
                 onChangeText(e.currentTarget.value);
               }}
-            />
+            ></textarea>
           </p>
           <p className="p-2 inline-block">
             <input
@@ -285,6 +303,15 @@ export const Container = () => {
               defaultValue={selectedSprite.outTime}
               onChange={(e) => {
                 onChangeOut(parseInt(e.currentTarget.value));
+              }}
+            />
+          </p>
+          <p className="p-2 inline-block">
+            <input
+              type="button"
+              value="解除"
+              onClick={(e) => {
+                onUnselected();
               }}
             />
           </p>
